@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration  
+  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"  
+  "http://mybatis.org/dtd/mybatis-3-config.dtd">
+
+<configuration>
+	<mappers>
+		<mapper resource="com/taoxiuxia/mapping/IncomeMapper.xml" />
+		<mapper resource="com/taoxiuxia/mapping/ItemMapper.xml" />
+		<mapper resource="com/taoxiuxia/mapping/ExpenditureMapper.xml" />
+		<mapper resource="com/taoxiuxia/mapping/UserMapper.xml" />
+		<mapper resource="com/taoxiuxia/mapping/BalanceMapper.xml" />
+		<mapper resource="com/taoxiuxia/mapping/PayMethodMapper.xml" />
+	</mappers>
+</configuration> 

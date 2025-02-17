@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.taoxiuxia.mapper.ExpenditureMapper" >
+  <resultMap id="BaseResultMap" type="com.taoxiuxia.model.Expenditure" >
+    <id column="id" property="id" jdbcType="INTEGER" />
+    <result column="item_id" property="itemId" jdbcType="INTEGER" />
+    <result column="user_id" property="userId" jdbcType="INTEGER" />
+    <result column="money" property="money" jdbcType="REAL" />
+    <result column="date" property="date" jdbcType="TIMESTAMP" />
+    <result column="type_of_money" property="type_of_money" jdbcType="VARCHAR" />
+    <result column="remark" property="remark" jdbcType="VARCHAR" />
+    <result column="dele" property="dele" jdbcType="INTEGER" />
+  </resultMap>
+  <sql id="Example_Where_Clause" >
+    <where >
+      <foreach collection="oredCriteria" item="criteria" separator="or" >
+        <if test="criteria.valid" >
+          <trim prefix="(" suffix=")" prefixOverrides="and" >
+            <foreach collection="criteria.criteria" item="criterion" >
+              <choose >
+                <when test="criterion.noValue" >
+                  and ${criterion.condition}
+                </when>
+                <when test="criterion.singleValue" >
+                  and ${criterion.condition} #{criterion.value}
+                </when>
+                <when test="criterion.betweenValue" >
+                  and ${criterion.condition} #{criterion.value} and #{criterion.secondValue}
+                </when>
+                <when test="criterion.listValue" >
+                  and ${criterion.condition}
+                  <foreach collection="criterion.value" item="listItem" open="(" close=")" separator="," >
+                    #{listItem}
+                  </foreach>
+                </when>
+              </choose>
+            </foreach>
+          </trim>
+        </if>
+      </foreach>
+    </where>
+  </sql>
+  <sql id="Update_By_Example_Where_Clause" >
+    <where >
+      <foreach collection="example.oredCriteria" item="criteria" separator="or" >
+        <if test="criteria.valid" >
+          <trim prefix="(" suffix=")" prefixOverrides="and" >
+            <foreach collection="criteria.criteria" item="criterion" >
+              <choose >
+                <when test="criterion.noValue" >
+                  and ${criterion.condition}
+                </when>
+                <when test="criterion.singleValue" >
+                  and ${criterion.condition} #{criterion.value}
+                </when>
+                <when test="criterion.betweenValue" >
+                  and ${criterion.condition} #{criterion.value} and #{criterion.secondValue}
+                </when>
+                <when test="criterion.listValue" >
+                  and ${criterion.condition}
+                  <foreach collection="criterion.value" item="listItem" open="(" close=")" separator="," >
+                    #{listItem}
+                  </foreach>
+                </when>
+              </choose>
+            </foreach>
+          </trim>
+        </if>
+      </foreach>
+    </where>
+  </sql>
+  <sql id="Base_Column_List" >
+    id, item_id, user_id, money, date, remark, dele
+  </sql>
+  
+  <!-- 在支出页面中显示 -->
+  <select id="selectAllExpenditures" parameterType="java.util.HashMap" resultMap="BaseResultMap">
+	SELECT
+		expenditure.id,
+		expenditure.item_id,
+		expenditure.user_id,
+		expenditure.date,
+		expenditure.money,
+		expenditure.type_of_money,
+		expenditure.remark,
+		item.name as itemName,
+		pay_method.NAME AS payMethodName
+	FROM
+		expenditure,
+		item,
+		pay_method
+	WHERE
+		expenditure.item_id = item.id
+	AND expenditure.user_id = #{userId,jdbcType=INTEGER}
+	AND expenditure.dele = 1
+	AND expenditure.type_of_money = pay_method.id
+	<if test="dataScale != null and dataScale == 'only_this_month'.toString() ">
+		AND date_format(expenditure.date, '%Y-%m') = date_format(now(), '%Y-%m') <!-- 只查询本月数据 -->
+	</if>
+	ORDER BY
+		expenditure.date DESC, expenditure.id DESC
+  </select>
+  
+  <insert id="insert" parameterType="com.taoxiuxia.model.Expenditure" >
+    INSERT INTO expenditure (
+		item_id,
+		user_id,
+		money,
+		type_of_money,
+		date,
+		remark,
+		dele
+	)
+	VALUES(
+		#{itemId,jdbcType=INTEGER}, 
+		#{userId,jdbcType=INTEGER}, 
+		#{money,jdbcType=REAL}, 
+		#{type_of_money, jdbcType=VARCHAR}, 
+		#{date,jdbcType=TIMESTAMP}, 
+		#{remark,jdbcType=VARCHAR}, 
+		#{dele,jdbcType=INTEGER}
+	)
+  </insert>
+  
+  <update id="updateByPrimaryKeySelective" parameterType="com.taoxiuxia.model.Expenditure" >
+    update expenditure
+    <set >
+      <if test="itemId != null and itemId != 0" >
+        item_id = #{itemId,jdbcType=INTEGER},
+      </if>
+      <if test="userId != null and useId != 0" >
+        user_id = #{userId,jdbcType=INTEGER},
+      </if>
+      <if test="money != null" >
+        money = #{money,jdbcType=REAL},
+      </if>
+      <if test="type_of_money != null" >
+        type_of_money = #{type_of_money,jdbcType=VARCHAR},
+      </if>
+      <if test="date != null" >
+        date = #{date,jdbcType=TIMESTAMP},
+      </if>
+      <if test="remark != null" >
+        remark = #{remark,jdbcType=VARCHAR},
+      </if>
+      <if test="dele != null and dele != 0" >
+        dele = #{dele,jdbcType=INTEGER},
+      </if>
+    </set>
+    where id = #{id,jdbcType=INTEGER}
+  </update>
+  
+  <select id="searchLast12Expenditure" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+    SELECT
+		DATE_FORMAT(t.date, '%Y-%m') month,
+		sum(money) sumMoney
+	  FROM
+        expenditure t,
+        pay_method p
+    WHERE
+        t.dele = 1
+    AND t.type_of_money = p.id
+    AND p.in_or_ex = 'ex'
+    AND p.is_count_in_this_month_ex = 1
+    AND t.user_Id = #{userId,jdbcType=INTEGER}
+    AND DATE_FORMAT(date, '%Y-%m') > DATE_FORMAT(
+        date_sub(curdate(), INTERVAL 12 MONTH),
+        '%Y-%m'
+    )
+    GROUP BY
+        month
+  </select>
+  
+  <!-- 搜索一段时间内的支出，按照item name分组，本月花呗与信用卡算入下月支出 -->
+  <select id="selectExpenditureGroupByItemName" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+    SELECT
+        i.name,
+        sum(money) sumMoney
+    FROM
+        item i,
+        expenditure t,
+        pay_method p
+    WHERE
+        i.id = t.item_id
+    AND t.type_of_money = p.id
+    AND p.is_count_in_this_month_ex = 1
+    AND t.dele = 1
+	AND t.user_id = #{userId,jdbcType=INTEGER}
+	AND DATE_FORMAT(date, '%Y-%m-%d') &gt;= DATE_FORMAT(#{startTime,jdbcType=VARCHAR}, '%Y-%m-%d')
+	AND DATE_FORMAT(date, '%Y-%m-%d') &lt;= DATE_FORMAT(#{endTime,jdbcType=VARCHAR}, '%Y-%m-%d')
+	GROUP BY
+		name
+  </select>
+  
+   <!-- 搜索一段时间内的支出，按照item name分组，本月花呗与信用卡算入本月支出，上月花呗与信用卡也算入本月支出（还款） -->
+  <select id="selectAllExpenditureGroupByItemName" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+    SELECT
+        i.name,
+        sum(money) sumMoney
+    FROM
+        item i,
+        expenditure t
+    WHERE
+        i.id = t.item_id
+    AND t.dele = 1
+    AND t.user_id = #{userId,jdbcType=INTEGER}
+    AND DATE_FORMAT(date, '%Y-%m-%d') &gt;= DATE_FORMAT(#{startTime,jdbcType=VARCHAR}, '%Y-%m-%d')
+    AND DATE_FORMAT(date, '%Y-%m-%d') &lt;= DATE_FORMAT(#{endTime,jdbcType=VARCHAR}, '%Y-%m-%d')
+    GROUP BY
+        name
+  </select>
+  
+  
+  <!-- //////////////////////////////////////////////////////////// -->
+  
+  
+  
+  
+  
+  
+  
+  
+  <select id="selectByExample" resultMap="BaseResultMap" parameterType="com.taoxiuxia.model.ExpenditureExample" >
+    select
+    <if test="distinct" >
+      distinct
+    </if>
+    <include refid="Base_Column_List" />
+    from expenditure
+    <if test="_parameter != null" >
+      <include refid="Example_Where_Clause" />
+    </if>
+    <if test="orderByClause != null" >
+      order by ${orderByClause}
+    </if>
+  </select>
+  <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Integer" >
+    select 
+    <include refid="Base_Column_List" />
+    from expenditure
+    where id = #{id,jdbcType=INTEGER}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer" >
+    delete from expenditure
+    where id = #{id,jdbcType=INTEGER}
+  </delete>
+  <delete id="deleteByExample" parameterType="com.taoxiuxia.model.ExpenditureExample" >
+    delete from expenditure
+    <if test="_parameter != null" >
+      <include refid="Example_Where_Clause" />
+    </if>
+  </delete>
+  
+  <insert id="insertSelective" parameterType="com.taoxiuxia.model.Expenditure" >
+    insert into expenditure
+    <trim prefix="(" suffix=")" suffixOverrides="," >
+      <if test="id != null" >
+        id,
+      </if>
+      <if test="itemId != null" >
+        item_id,
+      </if>
+      <if test="userId != null" >
+        user_id,
+      </if>
+      <if test="money != null" >
+        money,
+      </if>
+      <if test="date != null" >
+        date,
+      </if>
+      <if test="remark != null" >
+        remark,
+      </if>
+      <if test="dele != null" >
+        dele,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides="," >
+      <if test="id != null" >
+        #{id,jdbcType=INTEGER},
+      </if>
+      <if test="itemId != null" >
+        #{itemId,jdbcType=INTEGER},
+      </if>
+      <if test="userId != null" >
+        #{userId,jdbcType=INTEGER},
+      </if>
+      <if test="money != null" >
+        #{money,jdbcType=REAL},
+      </if>
+      <if test="date != null" >
+        #{date,jdbcType=TIMESTAMP},
+      </if>
+      <if test="remark != null" >
+        #{remark,jdbcType=VARCHAR},
+      </if>
+      <if test="dele != null" >
+        #{dele,jdbcType=INTEGER},
+      </if>
+    </trim>
+  </insert>
+  <select id="countByExample" parameterType="com.taoxiuxia.model.ExpenditureExample" resultType="java.lang.Integer" >
+    select count(*) from expenditure
+    <if test="_parameter != null" >
+      <include refid="Example_Where_Clause" />
+    </if>
+  </select>
+  <update id="updateByExampleSelective" parameterType="map" >
+    update expenditure
+    <set >
+      <if test="record.id != null" >
+        id = #{record.id,jdbcType=INTEGER},
+      </if>
+      <if test="record.itemId != null" >
+        item_id = #{record.itemId,jdbcType=INTEGER},
+      </if>
+      <if test="record.userId != null" >
+        user_id = #{record.userId,jdbcType=INTEGER},
+      </if>
+      <if test="record.money != null" >
+        money = #{record.money,jdbcType=REAL},
+      </if>
+      <if test="record.date != null" >
+        date = #{record.date,jdbcType=TIMESTAMP},
+      </if>
+      <if test="record.remark != null" >
+        remark = #{record.remark,jdbcType=VARCHAR},
+      </if>
+      <if test="record.dele != null" >
+        dele = #{record.dele,jdbcType=INTEGER},
+      </if>
+    </set>
+    <if test="_parameter != null" >
+      <include refid="Update_By_Example_Where_Clause" />
+    </if>
+  </update>
+  <update id="updateByExample" parameterType="map" >
+    update expenditure
+    set id = #{record.id,jdbcType=INTEGER},
+      item_id = #{record.itemId,jdbcType=INTEGER},
+      user_id = #{record.userId,jdbcType=INTEGER},
+      money = #{record.money,jdbcType=REAL},
+      date = #{record.date,jdbcType=TIMESTAMP},
+      remark = #{record.remark,jdbcType=VARCHAR},
+      dele = #{record.dele,jdbcType=INTEGER}
+    <if test="_parameter != null" >
+      <include refid="Update_By_Example_Where_Clause" />
+    </if>
+  </update>
+  
+  <update id="updateByPrimaryKey" parameterType="com.taoxiuxia.model.Expenditure" >
+    update expenditure
+    set item_id = #{itemId,jdbcType=INTEGER},
+      user_id = #{userId,jdbcType=INTEGER},
+      money = #{money,jdbcType=REAL},
+      date = #{date,jdbcType=TIMESTAMP},
+      remark = #{remark,jdbcType=VARCHAR},
+      dele = #{dele,jdbcType=INTEGER}
+    where id = #{id,jdbcType=INTEGER}
+  </update>
+</mapper>
